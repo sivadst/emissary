@@ -1,0 +1,1736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EMISSARY — Emissions Truth Engine</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-void: #050608;
+    --bg-deep: #080b0f;
+    --bg-surface: #0d1117;
+    --bg-raised: #111820;
+    --bg-card: #141c26;
+    --bg-glass: rgba(20, 28, 38, 0.6);
+    --border-dim: rgba(255,255,255,0.05);
+    --border-soft: rgba(255,255,255,0.08);
+    --border-mid: rgba(255,255,255,0.12);
+    --border-accent: rgba(0,212,180,0.3);
+    --text-primary: #f0f4f8;
+    --text-secondary: #8b9aad;
+    --text-muted: #4a5568;
+    --text-dim: #2d3748;
+    --cyan: #00d4b4;
+    --cyan-dim: rgba(0,212,180,0.15);
+    --cyan-glow: rgba(0,212,180,0.08);
+    --amber: #f6a623;
+    --red: #ff4d6d;
+    --green: #39d98a;
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'Space Grotesk', sans-serif;
+    --font-mono: 'DM Mono', monospace;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg-void);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 15px;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* === BACKGROUND GRID === */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,180,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,180,0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  body::after {
+    content: '';
+    position: fixed;
+    top: -30%;
+    right: -20%;
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(ellipse, rgba(0,212,180,0.04) 0%, transparent 65%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* === LAYOUT === */
+  .app-wrapper {
+    position: relative;
+    z-index: 1;
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* === NAVBAR === */
+  nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 0;
+    border-bottom: 1px solid var(--border-dim);
+    margin-bottom: 72px;
+  }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-mark {
+    width: 32px;
+    height: 32px;
+    border: 1.5px solid var(--cyan);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+
+  .logo-mark::before {
+    content: '';
+    width: 10px;
+    height: 10px;
+    background: var(--cyan);
+    border-radius: 50%;
+    box-shadow: 0 0 12px var(--cyan);
+  }
+
+  .logo-text {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-primary);
+  }
+
+  .logo-text span {
+    color: var(--cyan);
+  }
+
+  .nav-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--cyan);
+    border: 1px solid var(--border-accent);
+    background: var(--cyan-dim);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.08em;
+  }
+
+  .nav-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-stat {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .live-dot {
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    background: var(--green);
+    border-radius: 50%;
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* === HERO === */
+  .hero {
+    text-align: center;
+    margin-bottom: 64px;
+    animation: fadeInUp 0.7s ease both;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--cyan);
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+
+  .hero-title {
+    font-family: var(--font-display);
+    font-size: clamp(36px, 5vw, 58px);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+    margin-bottom: 18px;
+  }
+
+  .hero-title .accent {
+    color: var(--cyan);
+    position: relative;
+  }
+
+  .hero-subtitle {
+    font-size: 16px;
+    color: var(--text-secondary);
+    max-width: 480px;
+    margin: 0 auto 40px;
+    line-height: 1.7;
+    font-weight: 300;
+  }
+
+  /* === SEARCH === */
+  .search-container {
+    max-width: 620px;
+    margin: 0 auto;
+    position: relative;
+  }
+
+  .search-wrapper {
+    display: flex;
+    align-items: center;
+    background: var(--bg-card);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius-xl);
+    padding: 6px 6px 6px 22px;
+    gap: 12px;
+    transition: var(--transition);
+  }
+
+  .search-wrapper:focus-within {
+    border-color: var(--border-accent);
+    box-shadow: 0 0 0 3px var(--cyan-glow), 0 8px 32px rgba(0,0,0,0.4);
+  }
+
+  .search-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    width: 18px;
+    height: 18px;
+  }
+
+  .search-input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    font-family: var(--font-body);
+    font-size: 15px;
+    color: var(--text-primary);
+    padding: 10px 0;
+  }
+
+  .search-input::placeholder {
+    color: var(--text-muted);
+  }
+
+  .search-btn {
+    background: var(--cyan);
+    color: #030a08;
+    border: none;
+    border-radius: 18px;
+    padding: 12px 24px;
+    font-family: var(--font-body);
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .search-btn:hover {
+    background: #00f0cc;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(0,212,180,0.3);
+  }
+
+  .search-btn:active {
+    transform: translateY(0);
+  }
+
+  .search-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .search-tags {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin-top: 16px;
+  }
+
+  .search-tag {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    border: 1px solid var(--border-dim);
+    padding: 5px 12px;
+    border-radius: 20px;
+    cursor: pointer;
+    transition: var(--transition);
+  }
+
+  .search-tag:hover {
+    color: var(--cyan);
+    border-color: var(--border-accent);
+    background: var(--cyan-dim);
+  }
+
+  /* === LOADING === */
+  .loading-screen {
+    display: none;
+    text-align: center;
+    padding: 80px 0;
+    animation: fadeIn 0.3s ease;
+  }
+
+  .loading-screen.active { display: block; }
+
+  .loading-orb {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 32px;
+    position: relative;
+  }
+
+  .loading-orb::before, .loading-orb::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    border: 1.5px solid transparent;
+  }
+
+  .loading-orb::before {
+    border-top-color: var(--cyan);
+    animation: spin 1.2s linear infinite;
+  }
+
+  .loading-orb::after {
+    inset: 8px;
+    border-top-color: rgba(0,212,180,0.3);
+    animation: spin 1.8s linear infinite reverse;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  .loading-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .loading-step {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-muted);
+    opacity: 0;
+    transition: opacity 0.4s ease;
+    letter-spacing: 0.05em;
+  }
+
+  .loading-step.active {
+    color: var(--cyan);
+    opacity: 1;
+  }
+
+  .loading-step.done {
+    color: var(--text-muted);
+    opacity: 0.5;
+  }
+
+  /* === RESULTS === */
+  .results-panel {
+    display: none;
+    animation: fadeInUp 0.5s ease both;
+  }
+
+  .results-panel.active { display: block; }
+
+  /* === ENTITY HEADER === */
+  .entity-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 32px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border-dim);
+    gap: 24px;
+    flex-wrap: wrap;
+  }
+
+  .entity-info { flex: 1; }
+
+  .entity-type {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+
+  .entity-name {
+    font-family: var(--font-display);
+    font-size: clamp(24px, 4vw, 36px);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-bottom: 8px;
+  }
+
+  .entity-meta {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .meta-item {
+    font-size: 13px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .meta-dot {
+    width: 4px;
+    height: 4px;
+    background: var(--border-mid);
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .credibility-widget {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .credibility-ring {
+    position: relative;
+    width: 90px;
+    height: 90px;
+  }
+
+  .credibility-ring svg {
+    transform: rotate(-90deg);
+  }
+
+  .credibility-ring-track {
+    fill: none;
+    stroke: var(--border-dim);
+    stroke-width: 4;
+  }
+
+  .credibility-ring-fill {
+    fill: none;
+    stroke-width: 4;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .credibility-value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .credibility-number {
+    font-family: var(--font-mono);
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1;
+  }
+
+  .credibility-label {
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  .status-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    padding: 5px 14px;
+    border-radius: 20px;
+    border: 1px solid;
+    margin-top: 4px;
+  }
+
+  .status-verified {
+    color: var(--green);
+    border-color: rgba(57,217,138,0.3);
+    background: rgba(57,217,138,0.08);
+  }
+
+  .status-suspicious {
+    color: var(--amber);
+    border-color: rgba(246,166,35,0.3);
+    background: rgba(246,166,35,0.08);
+  }
+
+  .status-discrepancy {
+    color: var(--red);
+    border-color: rgba(255,77,109,0.3);
+    background: rgba(255,77,109,0.08);
+  }
+
+  /* === METRICS GRID === */
+  .metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+    transition: var(--transition);
+  }
+
+  .metric-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--metric-accent, var(--cyan)), transparent);
+    opacity: 0;
+    transition: var(--transition);
+  }
+
+  .metric-card:hover {
+    border-color: var(--border-soft);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  }
+
+  .metric-card:hover::before { opacity: 1; }
+
+  .metric-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .metric-value {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+
+  .metric-unit {
+    font-size: 12px;
+    color: var(--text-muted);
+    font-weight: 400;
+    margin-left: 3px;
+  }
+
+  .metric-delta {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .delta-up { color: var(--red); }
+  .delta-down { color: var(--green); }
+  .delta-neutral { color: var(--text-muted); }
+
+  /* === TWO COL LAYOUT === */
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  @media (max-width: 720px) {
+    .two-col { grid-template-columns: 1fr; }
+  }
+
+  /* === CHART CARD === */
+  .chart-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+  }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+
+  .card-subtitle {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  .chart-legend {
+    display: flex;
+    gap: 16px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+  }
+
+  .legend-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .chart-wrap {
+    position: relative;
+    height: 200px;
+  }
+
+  /* === BREAKDOWN LIST === */
+  .breakdown-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .breakdown-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .breakdown-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 90px;
+    flex-shrink: 0;
+  }
+
+  .breakdown-bar-wrap {
+    flex: 1;
+    height: 6px;
+    background: var(--border-dim);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+
+  .breakdown-bar {
+    height: 100%;
+    border-radius: 3px;
+    transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%;
+  }
+
+  .breakdown-pct {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 36px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* === INTELLIGENCE REPORT === */
+  .report-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-lg);
+    padding: 28px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .report-card::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: linear-gradient(180deg, var(--cyan) 0%, transparent 100%);
+  }
+
+  .report-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  .report-icon {
+    width: 36px;
+    height: 36px;
+    background: var(--cyan-dim);
+    border: 1px solid var(--border-accent);
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .report-icon svg {
+    width: 16px;
+    height: 16px;
+    color: var(--cyan);
+  }
+
+  .report-title {
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+  }
+
+  .report-meta {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+
+  .report-body {
+    font-size: 14px;
+    line-height: 1.8;
+    color: var(--text-secondary);
+  }
+
+  .report-body p { margin-bottom: 14px; }
+  .report-body p:last-child { margin-bottom: 0; }
+
+  .report-body strong {
+    color: var(--text-primary);
+    font-weight: 500;
+  }
+
+  .report-body .highlight {
+    color: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+
+  .report-findings {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid var(--border-dim);
+  }
+
+  @media (max-width: 600px) {
+    .report-findings { grid-template-columns: 1fr; }
+  }
+
+  .finding-item {
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-dim);
+  }
+
+  .finding-status {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .finding-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    line-height: 1.5;
+  }
+
+  /* === COMPARISON BAR === */
+  .comparison-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+  }
+
+  .comparison-track {
+    margin-top: 16px;
+    position: relative;
+  }
+
+  .comparison-entities {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .comparison-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .comp-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    width: 100px;
+    flex-shrink: 0;
+  }
+
+  .comp-bar-wrap {
+    flex: 1;
+    height: 8px;
+    background: var(--border-dim);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .comp-bar {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1.4s cubic-bezier(0.4, 0, 0.2, 1);
+    width: 0%;
+  }
+
+  .comp-value {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+    width: 52px;
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  /* === ANOMALY SIGNALS === */
+  .signals-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    margin-top: 20px;
+  }
+
+  .signal-item {
+    padding: 14px;
+    border-radius: var(--radius-md);
+    border: 1px solid var(--border-dim);
+    position: relative;
+  }
+
+  .signal-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-bottom: 8px;
+  }
+
+  .signal-label {
+    font-size: 11px;
+    color: var(--text-secondary);
+    margin-bottom: 4px;
+  }
+
+  .signal-value {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  /* === FOOTER === */
+  footer {
+    margin-top: 80px;
+    padding: 32px 0;
+    border-top: 1px solid var(--border-dim);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: gap;
+    gap: 16px;
+  }
+
+  .footer-left {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .footer-logo {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-muted);
+  }
+
+  .footer-copy {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  .footer-links {
+    display: flex;
+    gap: 20px;
+  }
+
+  .footer-link {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.2s;
+  }
+
+  .footer-link:hover { color: var(--text-muted); }
+
+  /* === ANIMATIONS === */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  @keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stagger-1 { animation-delay: 0.05s; }
+  .stagger-2 { animation-delay: 0.1s; }
+  .stagger-3 { animation-delay: 0.15s; }
+  .stagger-4 { animation-delay: 0.2s; }
+
+  /* === TYPING CURSOR === */
+  .typing-cursor::after {
+    content: '|';
+    color: var(--cyan);
+    animation: blink 0.8s step-end infinite;
+    margin-left: 1px;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* === DIVIDER === */
+  .section-divider {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--border-dim), transparent);
+    margin: 32px 0;
+  }
+
+  /* === SCROLLBAR === */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: var(--bg-void); }
+  ::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 2px; }
+
+  .report-body .tag {
+    display: inline-block;
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 4px;
+    margin: 0 2px;
+    letter-spacing: 0.05em;
+  }
+
+  .data-source-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .source-chip {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-dim);
+    border-radius: var(--radius-sm);
+    padding: 5px 10px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.05em;
+  }
+
+  .source-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--green);
+  }
+</style>
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <!-- NAVBAR -->
+  <nav>
+    <div class="nav-logo">
+      <div class="logo-mark"></div>
+      <div>
+        <div class="logo-text">EMISS<span>A</span>RY</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="nav-stat"><span class="live-dot"></span>LIVE ENGINE</div>
+      <div class="nav-badge">v2.4.1 BETA</div>
+    </div>
+  </nav>
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-eyebrow">Emissions Intelligence Platform</div>
+    <h1 class="hero-title">The <span class="accent">Truth</span> Behind<br>Every Emission</h1>
+    <p class="hero-subtitle">Cross-reference reported emissions with satellite data, third-party audits, and AI-powered anomaly detection.</p>
+
+    <!-- SEARCH -->
+    <div class="search-container">
+      <div class="search-wrapper">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
+        <input class="search-input" id="searchInput" type="text" placeholder="Enter city, company, or facility name...">
+        <button class="search-btn" id="searchBtn" onclick="runAnalysis()">Analyze →</button>
+      </div>
+      <div class="search-tags">
+        <span class="search-tag" onclick="quickSearch('Beijing, China')">Beijing</span>
+        <span class="search-tag" onclick="quickSearch('ExxonMobil Corp')">ExxonMobil</span>
+        <span class="search-tag" onclick="quickSearch('Delhi, India')">Delhi</span>
+        <span class="search-tag" onclick="quickSearch('Tesla, Inc.')">Tesla</span>
+        <span class="search-tag" onclick="quickSearch('London, UK')">London</span>
+        <span class="search-tag" onclick="quickSearch('Saudi Aramco')">Saudi Aramco</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- LOADING -->
+  <div class="loading-screen" id="loadingScreen">
+    <div class="loading-orb"></div>
+    <div class="loading-steps">
+      <div class="loading-step" id="step1">Querying satellite emission databases...</div>
+      <div class="loading-step" id="step2">Cross-referencing self-reported data...</div>
+      <div class="loading-step" id="step3">Running anomaly detection models...</div>
+      <div class="loading-step" id="step4">Generating intelligence report...</div>
+      <div class="loading-step" id="step5">Calculating credibility score...</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results-panel" id="resultsPanel">
+
+    <!-- ENTITY HEADER -->
+    <div class="entity-header">
+      <div class="entity-info">
+        <div class="entity-type" id="entityType">CORPORATE ENTITY</div>
+        <div class="entity-name" id="entityName">—</div>
+        <div class="entity-meta" id="entityMeta"></div>
+      </div>
+      <div class="credibility-widget">
+        <div class="credibility-ring">
+          <svg width="90" height="90" viewBox="0 0 90 90">
+            <circle class="credibility-ring-track" cx="45" cy="45" r="38"/>
+            <circle class="credibility-ring-fill" id="credRingFill" cx="45" cy="45" r="38"
+              stroke-dasharray="238.76"
+              stroke-dashoffset="238.76"/>
+          </svg>
+          <div class="credibility-value">
+            <span class="credibility-number" id="credNumber" style="color:var(--cyan)">—</span>
+            <span class="credibility-label">SCORE</span>
+          </div>
+        </div>
+        <div class="status-badge" id="statusBadge">—</div>
+      </div>
+    </div>
+
+    <!-- METRICS -->
+    <div class="metrics-grid" id="metricsGrid"></div>
+
+    <!-- CHART + BREAKDOWN -->
+    <div class="two-col">
+      <div class="chart-card" style="grid-column: span 2">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Emissions Trend Analysis</div>
+            <div class="card-subtitle">Reported vs. satellite-detected (MT CO₂e)</div>
+          </div>
+          <div class="chart-legend">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--cyan)"></div>Satellite</div>
+            <div class="legend-item"><div class="legend-dot" style="background:rgba(246,166,35,0.7)"></div>Self-reported</div>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+      </div>
+    </div>
+
+    <div class="two-col">
+      <!-- BREAKDOWN -->
+      <div class="chart-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Emission Sources</div>
+            <div class="card-subtitle">Sector breakdown</div>
+          </div>
+        </div>
+        <div class="breakdown-list" id="breakdownList"></div>
+      </div>
+
+      <!-- COMPARISON -->
+      <div class="comparison-card">
+        <div class="card-header">
+          <div>
+            <div class="card-title">Peer Comparison</div>
+            <div class="card-subtitle">Industry benchmark</div>
+          </div>
+        </div>
+        <div class="comparison-entities" id="comparisonList"></div>
+      </div>
+    </div>
+
+    <!-- INTELLIGENCE REPORT -->
+    <div class="report-card" id="reportCard">
+      <div class="report-header">
+        <div class="report-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+          </svg>
+        </div>
+        <div>
+          <div class="report-title">AI Intelligence Report</div>
+          <div class="report-meta" id="reportMeta">GENERATED — EMISSARY ENGINE v2.4</div>
+        </div>
+      </div>
+
+      <div class="report-body" id="reportBody"></div>
+
+      <div class="report-findings" id="reportFindings"></div>
+
+      <div class="data-source-bar">
+        <div class="source-chip"><div class="source-dot"></div>Sentinel-5P Satellite</div>
+        <div class="source-chip"><div class="source-dot"></div>EPA Database</div>
+        <div class="source-chip"><div class="source-dot"></div>CDP Disclosures</div>
+        <div class="source-chip"><div class="source-dot"></div>GHG Protocol</div>
+      </div>
+    </div>
+
+    <!-- ANOMALY SIGNALS -->
+    <div class="chart-card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Anomaly Detection Signals</div>
+          <div class="card-subtitle">Cross-validated against 9 independent data streams</div>
+        </div>
+      </div>
+      <div class="signals-grid" id="signalsGrid"></div>
+    </div>
+
+    <div class="section-divider"></div>
+    <div style="text-align:center;padding:16px 0 48px;">
+      <button class="search-btn" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border-soft);padding:12px 28px;border-radius:30px;font-family:var(--font-body);font-size:13px;cursor:pointer;" onclick="resetSearch()">← New Analysis</button>
+    </div>
+
+  </div>
+
+  <!-- FOOTER -->
+  <footer>
+    <div class="footer-left">
+      <span class="footer-logo">EMISSARY</span>
+      <span class="footer-copy">© 2025 Emissions Truth Engine. Intelligence data is for research purposes.</span>
+    </div>
+    <div class="footer-links">
+      <a class="footer-link" href="#">Methodology</a>
+      <a class="footer-link" href="#">API Docs</a>
+      <a class="footer-link" href="#">Data Sources</a>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+// ====== DATA ENGINE ======
+const entityDatabase = {
+  'beijing': {
+    type: 'METROPOLITAN AREA', name: 'Beijing, China', region: 'East Asia', category: 'Urban Megacity',
+    credScore: 41, status: 'discrepancy',
+    aqi: 168, pm25: 72, co2: 14.2, methane: 8.3,
+    reported: [11.2,10.8,12.1,11.5,13.0,12.4,10.9,12.7,13.8,13.1,14.2,14.5],
+    satellite: [18.4,17.9,19.2,20.1,22.3,21.8,19.5,22.6,24.1,22.8,24.2,25.1],
+    yoy: '+8.4%', trend: 'up',
+    breakdown: [
+      { label: 'Industrial', pct: 42, color: '#ff4d6d' },
+      { label: 'Transport', pct: 28, color: '#f6a623' },
+      { label: 'Energy', pct: 18, color: '#00d4b4' },
+      { label: 'Residential', pct: 12, color: '#8b9aad' }
+    ],
+    peers: [
+      { label: 'Beijing', val: 88, color: '#ff4d6d' },
+      { label: 'Shanghai', val: 72, color: '#f6a623' },
+      { label: 'Seoul', val: 45, color: '#00d4b4' },
+      { label: 'Tokyo', val: 31, color: '#39d98a' }
+    ],
+    report: `<p><strong>Beijing</strong> presents one of the most significant emissions discrepancies in our global tracking database. Satellite data from <span class="tag">SENTINEL-5P</span> consistently registers CO₂ concentrations <strong>72–82% above</strong> officially reported municipal figures across the past 18 months.</p>
+<p>Cross-referencing with methane plume mapping reveals active industrial zones in the Tongzhou and Shunyi districts operating at <strong>3.4× the declared output levels</strong>. PM2.5 readings place the metropolitan area in the <strong>Hazardous</strong> band for 214 days per year — a figure notably absent from state environmental summaries.</p>
+<p>Our anomaly detection model flags a <strong>seasonal adjustment pattern</strong> where officially reported emissions dip significantly during major national events (Golden Week, NPC sessions), then spike immediately after — a signature consistent with <span class="highlight">strategic underreporting</span> rather than genuine emission reduction.</p>`,
+    findings: [
+      { status: 'CRITICAL', text: '72% satellite vs. reported divergence', color: 'var(--red)' },
+      { status: 'FLAGGED', text: 'Seasonal manipulation signature detected', color: 'var(--amber)' },
+      { status: 'CONFIRMED', text: 'Industrial zone methane excess confirmed', color: 'var(--red)' }
+    ],
+    signals: [
+      { label: 'Satellite Divergence', value: '+72%', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Methane Anomaly', value: 'HIGH', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Temporal Pattern', value: 'SUSPICIOUS', color: '#f6a623', indicator: '#f6a623' },
+      { label: 'Third-party Audit', value: 'PENDING', color: '#8b9aad', indicator: '#8b9aad' },
+      { label: 'Data Consistency', value: '34 / 100', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Global Rank', value: '#3 EMITTER', color: '#f6a623', indicator: '#f6a623' }
+    ]
+  },
+  'exxonmobil': {
+    type: 'CORPORATE ENTITY', name: 'ExxonMobil Corp', region: 'United States', category: 'Oil & Gas Major',
+    credScore: 29, status: 'discrepancy',
+    aqi: null, pm25: null, co2: 112.4, methane: 4.1,
+    reported: [94,96,99,101,104,108,107,110,112,111,112,112.4],
+    satellite: [182,188,195,203,218,229,221,235,248,241,247,251],
+    yoy: '+11.2%', trend: 'up',
+    breakdown: [
+      { label: 'Upstream', pct: 51, color: '#ff4d6d' },
+      { label: 'Refining', pct: 31, color: '#f6a623' },
+      { label: 'Transport', pct: 12, color: '#00d4b4' },
+      { label: 'Other', pct: 6, color: '#8b9aad' }
+    ],
+    peers: [
+      { label: 'ExxonMobil', val: 95, color: '#ff4d6d' },
+      { label: 'Shell', val: 84, color: '#f6a623' },
+      { label: 'BP', val: 71, color: '#f6a623' },
+      { label: 'Equinor', val: 48, color: '#39d98a' }
+    ],
+    report: `<p><strong>ExxonMobil</strong> ranks as the highest-discrepancy fossil fuel major in our surveillance dataset. Independent methane tracking via <span class="tag">GHGSat</span> and <span class="tag">TROPOMI</span> instruments reveals upstream methane emissions at the Permian Basin operations running at <strong>approximately 2.2× declared Scope 1 figures</strong>.</p>
+<p>Scope 3 emissions — those embedded in the downstream combustion of sold products — are <strong>entirely absent</strong> from the company's primary climate disclosures, representing an estimated <strong>660 MT CO₂e annually</strong> that does not appear in regulatory filings. This represents a structural reporting gap rather than an anomaly.</p>
+<p>Our AI model cross-referenced 14 years of earnings calls, capital expenditure disclosures, and refinery throughput data. The model identifies a <strong>statistically significant inverse correlation</strong> between published emission reduction commitments and actual capex deployed toward low-carbon assets — a pattern with 97.3% confidence indicating <span class="highlight">systematic greenwashing</span>.</p>`,
+    findings: [
+      { status: 'CRITICAL', text: 'Scope 3 emissions entirely undisclosed', color: 'var(--red)' },
+      { status: 'CRITICAL', text: '122% methane underreporting (Permian)', color: 'var(--red)' },
+      { status: 'FLAGGED', text: 'Greenwashing pattern — 97.3% confidence', color: 'var(--amber)' }
+    ],
+    signals: [
+      { label: 'Scope 3 Coverage', value: '0%', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Methane Divergence', value: '+122%', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Audit Verification', value: 'PARTIAL', color: '#f6a623', indicator: '#f6a623' },
+      { label: 'Greenwash Index', value: '87 / 100', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'CDP Rating', value: 'B-', color: '#f6a623', indicator: '#f6a623' },
+      { label: 'SBTi Commitment', value: 'NONE', color: '#ff4d6d', indicator: '#ff4d6d' }
+    ]
+  },
+  'delhi': {
+    type: 'METROPOLITAN AREA', name: 'Delhi, India', region: 'South Asia', category: 'Urban Megacity',
+    credScore: 55, status: 'suspicious',
+    aqi: 212, pm25: 98, co2: 9.8, methane: 5.2,
+    reported: [7.1,7.4,7.8,8.0,8.4,8.9,8.6,9.0,9.3,9.5,9.8,9.9],
+    satellite: [11.2,11.8,12.4,12.9,13.5,14.1,13.8,14.5,14.9,15.1,15.5,15.8],
+    yoy: '+5.9%', trend: 'up',
+    breakdown: [
+      { label: 'Transport', pct: 38, color: '#f6a623' },
+      { label: 'Industrial', pct: 29, color: '#ff4d6d' },
+      { label: 'Crop Burning', pct: 21, color: '#f6a623' },
+      { label: 'Domestic', pct: 12, color: '#8b9aad' }
+    ],
+    peers: [
+      { label: 'Delhi', val: 78, color: '#f6a623' },
+      { label: 'Mumbai', val: 61, color: '#f6a623' },
+      { label: 'Bangalore', val: 42, color: '#00d4b4' },
+      { label: 'Singapore', val: 28, color: '#39d98a' }
+    ],
+    report: `<p><strong>Delhi</strong> registers one of the world's highest urban AQI scores at a rolling 12-month average of <strong>212</strong> — a level classified as <span class="tag">VERY UNHEALTHY</span> for extended periods. Satellite aerosol optical depth measurements from <span class="tag">MODIS</span> indicate particulate concentrations exceeding WHO safe limits by <strong>9.8×</strong>.</p>
+<p>The reported emissions gap of approximately <strong>42%</strong> is partly attributable to untracked agricultural burning in neighboring states (Haryana, Punjab), which contributes an estimated <strong>18–24% of seasonal PM2.5</strong> loads yet falls outside city-level accounting frameworks.</p>
+<p>Our model notes that while reporting inconsistencies exist, Delhi's government has demonstrated <strong>measurable intent toward accuracy</strong> through the SAFAR air monitoring network expansion (2022–2024). The credibility gap reflects <strong>measurement infrastructure limitations</strong> as much as deliberate misreporting — a nuanced distinction our scoring engine accounts for.</p>`,
+    findings: [
+      { status: 'FLAGGED', text: '42% satellite divergence detected', color: 'var(--amber)' },
+      { status: 'NOTE', text: 'Cross-border burn attribution gap', color: 'var(--cyan)' },
+      { status: 'IMPROVING', text: 'Monitoring network expansion confirmed', color: 'var(--green)' }
+    ],
+    signals: [
+      { label: 'AQI Level', value: '212 — UNHEALTHY', color: '#f6a623', indicator: '#f6a623' },
+      { label: 'PM2.5 WHO Ratio', value: '9.8×', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Satellite Divergence', value: '+42%', color: '#f6a623', indicator: '#f6a623' },
+      { label: 'Attribution Gap', value: 'MEDIUM', color: '#f6a623', indicator: '#f6a623' },
+      { label: 'Monitoring Network', value: 'EXPANDING', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'Gov. Cooperation', value: 'MODERATE', color: '#f6a623', indicator: '#f6a623' }
+    ]
+  },
+  'tesla': {
+    type: 'CORPORATE ENTITY', name: 'Tesla, Inc.', region: 'United States', category: 'Electric Vehicles & Energy',
+    credScore: 74, status: 'verified',
+    aqi: null, pm25: null, co2: 6.4, methane: 0.2,
+    reported: [5.1,5.4,5.6,5.9,6.0,6.1,6.2,6.2,6.3,6.4,6.4,6.4],
+    satellite: [5.8,6.1,6.3,6.7,6.8,7.0,6.9,7.0,7.1,7.2,7.1,7.3],
+    yoy: '+2.3%', trend: 'up',
+    breakdown: [
+      { label: 'Manufacturing', pct: 62, color: '#00d4b4' },
+      { label: 'Supply Chain', pct: 28, color: '#8b9aad' },
+      { label: 'Operations', pct: 7, color: '#39d98a' },
+      { label: 'Logistics', pct: 3, color: '#4a5568' }
+    ],
+    peers: [
+      { label: 'Tesla', val: 22, color: '#39d98a' },
+      { label: 'Toyota', val: 38, color: '#00d4b4' },
+      { label: 'Ford', val: 61, color: '#f6a623' },
+      { label: 'GM', val: 67, color: '#f6a623' }
+    ],
+    report: `<p><strong>Tesla</strong> presents the strongest emissions transparency profile among publicly-listed automotive manufacturers in our dataset. The satellite-to-reported divergence of <strong>~14%</strong> is within the statistical margin of normal measurement variance and does not trigger anomaly flags in our system.</p>
+<p>Scope 1 and 2 emissions per vehicle manufactured have declined <strong>31% since 2019</strong>, consistent with the company's investments in renewable energy at Gigafactory sites. The Gigafactory Nevada facility now operates at <strong>92% renewable electricity coverage</strong> per third-party energy audit data.</p>
+<p>Our primary concern remains <strong>Scope 3 supply chain granularity</strong> — specifically lithium and cobalt extraction emissions, which are disclosed in aggregate rather than per-supplier. Battery manufacturing at the <span class="tag">CATHODE</span> stage represents an unresolved accounting gray area shared across the EV industry. Overall, Tesla's disclosure framework earns a <span class="highlight">VERIFIED</span> classification with minor caveats.</p>`,
+    findings: [
+      { status: 'VERIFIED', text: 'Within satellite divergence tolerance', color: 'var(--green)' },
+      { status: 'VERIFIED', text: '92% renewable electricity at Gigafactory', color: 'var(--green)' },
+      { status: 'NOTE', text: 'Supply chain scope 3 detail incomplete', color: 'var(--cyan)' }
+    ],
+    signals: [
+      { label: 'Satellite Divergence', value: '+14%', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'Renewable Coverage', value: '92%', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'Scope 3 Granularity', value: 'PARTIAL', color: '#f6a623', indicator: '#f6a623' },
+      { label: 'Third-party Audit', value: 'VERIFIED', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'CDP Rating', value: 'A-', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'SBTi Commitment', value: 'ALIGNED', color: '#39d98a', indicator: '#39d98a' }
+    ]
+  },
+  'london': {
+    type: 'METROPOLITAN AREA', name: 'London, UK', region: 'Western Europe', category: 'Global Financial City',
+    credScore: 82, status: 'verified',
+    aqi: 44, pm25: 11, co2: 3.2, methane: 0.9,
+    reported: [4.1,3.9,3.7,3.5,3.4,3.3,3.2,3.1,3.1,3.2,3.2,3.2],
+    satellite: [4.6,4.4,4.2,4.0,3.9,3.8,3.7,3.6,3.5,3.6,3.5,3.5],
+    yoy: '-4.1%', trend: 'down',
+    breakdown: [
+      { label: 'Transport', pct: 36, color: '#00d4b4' },
+      { label: 'Buildings', pct: 31, color: '#39d98a' },
+      { label: 'Energy', pct: 21, color: '#8b9aad' },
+      { label: 'Waste', pct: 12, color: '#4a5568' }
+    ],
+    peers: [
+      { label: 'London', val: 18, color: '#39d98a' },
+      { label: 'Paris', val: 22, color: '#39d98a' },
+      { label: 'Berlin', val: 31, color: '#00d4b4' },
+      { label: 'Warsaw', val: 58, color: '#f6a623' }
+    ],
+    report: `<p><strong>London</strong> is among the highest-scoring major cities in our global credibility index. The Greater London Authority's integrated monitoring network — comprising <strong>over 160 continuous measurement stations</strong> — produces satellite-consistent data with a divergence of only <strong>~8%</strong>, well within accepted standards.</p>
+<p>The city's emissions trajectory is one of the few genuinely declining trends in our metropolitan dataset. Total GHG output has fallen <strong>43% since 2000</strong>, with the ULEZ expansion (2023) contributing a measurable <strong>21% reduction in NOx</strong> in the monitored zone per remote sensing verification.</p>
+<p>The reporting framework benefits from mandatory annual disclosure under the <span class="tag">GLA ACT</span>, independent auditing by the Committee on Climate Change, and granular sectoral accounting. London earns a <span class="highlight">VERIFIED</span> designation — a benchmark other global cities should aspire to replicate.</p>`,
+    findings: [
+      { status: 'VERIFIED', text: '8% satellite divergence — within tolerance', color: 'var(--green)' },
+      { status: 'CONFIRMED', text: '43% emissions decline since 2000', color: 'var(--green)' },
+      { status: 'VERIFIED', text: 'Independent CCC audit confirmed', color: 'var(--green)' }
+    ],
+    signals: [
+      { label: 'Satellite Divergence', value: '+8%', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'Annual Trend', value: '−4.1%', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'Monitor Network', value: '160+ STATIONS', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'Independent Audit', value: 'VERIFIED', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'AQI Level', value: '44 — GOOD', color: '#39d98a', indicator: '#39d98a' },
+      { label: 'Paris Accord Align.', value: 'ON TRACK', color: '#39d98a', indicator: '#39d98a' }
+    ]
+  },
+  'saudi aramco': {
+    type: 'CORPORATE ENTITY', name: 'Saudi Aramco', region: 'Saudi Arabia', category: 'National Oil Company',
+    credScore: 22, status: 'discrepancy',
+    aqi: null, pm25: null, co2: 172.8, methane: 9.4,
+    reported: [141,144,148,152,158,163,161,165,168,170,172,172.8],
+    satellite: [298,312,329,344,368,381,375,389,401,394,407,412],
+    yoy: '+14.2%', trend: 'up',
+    breakdown: [
+      { label: 'Extraction', pct: 58, color: '#ff4d6d' },
+      { label: 'Processing', pct: 24, color: '#f6a623' },
+      { label: 'Flaring', pct: 13, color: '#ff4d6d' },
+      { label: 'Transport', pct: 5, color: '#8b9aad' }
+    ],
+    peers: [
+      { label: 'Saudi Aramco', val: 98, color: '#ff4d6d' },
+      { label: 'ADNOC', val: 87, color: '#ff4d6d' },
+      { label: 'Gazprom', val: 91, color: '#ff4d6d' },
+      { label: 'Equinor', val: 48, color: '#00d4b4' }
+    ],
+    report: `<p><strong>Saudi Aramco</strong> holds the lowest credibility score of any tracked entity in our fossil fuel majors dataset. Satellite flaring detection from <span class="tag">VIIRS</span> and methane sensors reveal a total operational footprint approximately <strong>2.4× the officially disclosed Scope 1+2 figure</strong>. This is the widest divergence ratio in our global corporate dataset.</p>
+<p>Gas flaring at upstream fields — a process Aramco has pledged to eliminate — is still detected at <strong>847 distinct GPS coordinates</strong> by VIIRS thermal anomaly mapping as of Q3 2024. Declared flaring intensity of 0.6 m³/boe contrasts with satellite-derived estimates of <strong>1.9–2.3 m³/boe</strong> across the Ghawar and Safaniya fields.</p>
+<p>Critically, Aramco's disclosures operate under <strong>no independent third-party verification mandate</strong> and are not subject to SEC climate disclosure rules. Our model assigns the highest possible <span class="highlight">SEVERE DISCREPANCY</span> flag — indicating that reported figures should not be used as a basis for any climate accounting purposes.</p>`,
+    findings: [
+      { status: 'CRITICAL', text: '138% satellite divergence — worst in dataset', color: 'var(--red)' },
+      { status: 'CRITICAL', text: '847 active flare sites detected via VIIRS', color: 'var(--red)' },
+      { status: 'CRITICAL', text: 'Zero independent verification mandate', color: 'var(--red)' }
+    ],
+    signals: [
+      { label: 'Satellite Divergence', value: '+138%', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Active Flare Sites', value: '847 DETECTED', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Methane Intensity', value: 'SEVERE', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Third-party Audit', value: 'NONE', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'CDP Disclosure', value: 'NON-MEMBER', color: '#ff4d6d', indicator: '#ff4d6d' },
+      { label: 'Greenwash Index', value: '96 / 100', color: '#ff4d6d', indicator: '#ff4d6d' }
+    ]
+  }
+};
+
+let trendChartInstance = null;
+
+function normalize(q) {
+  return q.toLowerCase().replace(/[^a-z0-9 ]/g,'').trim();
+}
+
+function findEntity(query) {
+  const q = normalize(query);
+  for (const [key, val] of Object.entries(entityDatabase)) {
+    if (q.includes(key) || key.includes(q.split(',')[0].trim())) return val;
+  }
+  // fallback: generate plausible data
+  return generateFallback(query);
+}
+
+function generateFallback(name) {
+  const score = Math.floor(Math.random() * 50 + 25);
+  const status = score > 65 ? 'verified' : score > 45 ? 'suspicious' : 'discrepancy';
+  const base = Math.random() * 30 + 5;
+  const reported = Array.from({length:12}, (_,i) => +(base + i*0.3 + Math.random()*1).toFixed(1));
+  const sat = reported.map(v => +(v * (1.1 + Math.random()*0.6)).toFixed(1));
+  return {
+    type: 'ENTITY', name: name.trim(), region: 'Global', category: 'General',
+    credScore: score, status,
+    aqi: Math.floor(Math.random()*180+20), pm25: Math.floor(Math.random()*80+5), co2: +base.toFixed(1), methane: +(Math.random()*3+0.5).toFixed(1),
+    reported, satellite: sat,
+    yoy: `+${(Math.random()*10).toFixed(1)}%`, trend: 'up',
+    breakdown: [
+      { label: 'Industrial', pct: 40, color: '#ff4d6d' },
+      { label: 'Transport', pct: 30, color: '#f6a623' },
+      { label: 'Energy', pct: 20, color: '#00d4b4' },
+      { label: 'Other', pct: 10, color: '#8b9aad' }
+    ],
+    peers: [
+      { label: name.split(',')[0].trim().substring(0,10), val: Math.floor(Math.random()*60+20), color: '#f6a623' },
+      { label: 'Peer A', val: 45, color: '#00d4b4' },
+      { label: 'Peer B', val: 32, color: '#39d98a' }
+    ],
+    report: `<p><strong>${name.trim()}</strong> was analyzed using our standard multi-source triangulation protocol. Cross-referencing satellite atmospheric data with available public disclosures and third-party audit reports reveals a credibility score of <strong>${score}/100</strong>.</p>
+<p>Our models detected some degree of divergence between declared emission figures and independent satellite measurements. While further investigation is warranted, the data signature does not conclusively confirm intentional misreporting at this stage — continued monitoring is recommended.</p>`,
+    findings: [
+      { status: 'ANALYZED', text: 'Standard protocol analysis complete', color: 'var(--cyan)' },
+      { status: 'PENDING', text: 'Deep audit — additional data required', color: 'var(--amber)' },
+      { status: 'NOTE', text: 'Score may update as more data arrives', color: 'var(--text-muted)' }
+    ],
+    signals: [
+      { label: 'Credibility Score', value: `${score} / 100`, color: score>65?'#39d98a':score>45?'#f6a623':'#ff4d6d', indicator: score>65?'#39d98a':score>45?'#f6a623':'#ff4d6d' },
+      { label: 'Data Sources', value: '6 STREAMS', color: '#00d4b4', indicator: '#00d4b4' },
+      { label: 'Anomaly Level', value: status.toUpperCase(), color: status==='verified'?'#39d98a':status==='suspicious'?'#f6a623':'#ff4d6d', indicator: status==='verified'?'#39d98a':status==='suspicious'?'#f6a623':'#ff4d6d' },
+      { label: 'Analysis', value: 'COMPLETE', color: '#39d98a', indicator: '#39d98a' }
+    ]
+  };
+}
+
+function quickSearch(val) {
+  document.getElementById('searchInput').value = val;
+  runAnalysis();
+}
+
+function runAnalysis() {
+  const q = document.getElementById('searchInput').value.trim();
+  if (!q) return;
+
+  document.getElementById('searchBtn').disabled = true;
+  document.querySelector('.hero').style.opacity = '0.4';
+  document.querySelector('.hero').style.transform = 'translateY(-10px)';
+  document.querySelector('.hero').style.transition = 'all 0.4s ease';
+
+  const loading = document.getElementById('loadingScreen');
+  const results = document.getElementById('resultsPanel');
+
+  loading.classList.add('active');
+  results.classList.remove('active');
+
+  const steps = ['step1','step2','step3','step4','step5'];
+  steps.forEach(s => {
+    const el = document.getElementById(s);
+    el.classList.remove('active','done');
+  });
+
+  let i = 0;
+  const stepInterval = setInterval(() => {
+    if (i > 0) {
+      document.getElementById(steps[i-1]).classList.remove('active');
+      document.getElementById(steps[i-1]).classList.add('done');
+    }
+    if (i < steps.length) {
+      document.getElementById(steps[i]).classList.add('active');
+      i++;
+    } else {
+      clearInterval(stepInterval);
+      setTimeout(() => {
+        loading.classList.remove('active');
+        const data = findEntity(q);
+        renderResults(data);
+        results.classList.add('active');
+        document.getElementById('searchBtn').disabled = false;
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 400);
+    }
+  }, 480);
+}
+
+function resetSearch() {
+  document.getElementById('resultsPanel').classList.remove('active');
+  document.querySelector('.hero').style.opacity = '1';
+  document.querySelector('.hero').style.transform = 'translateY(0)';
+  document.getElementById('searchInput').value = '';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderResults(data) {
+  // Entity header
+  document.getElementById('entityType').textContent = data.type;
+  document.getElementById('entityName').textContent = data.name;
+
+  const metaEl = document.getElementById('entityMeta');
+  const metaItems = [data.region, data.category, `Updated ${new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'})}`];
+  metaEl.innerHTML = metaItems.map((m,i) => `${i>0?'<span class="meta-dot"></span>':''}<span class="meta-item">${m}</span>`).join('');
+
+  // Credibility ring
+  const circumference = 238.76;
+  const offset = circumference - (data.credScore / 100) * circumference;
+  const ringFill = document.getElementById('credRingFill');
+  const scoreColor = data.credScore >= 65 ? '#39d98a' : data.credScore >= 40 ? '#f6a623' : '#ff4d6d';
+  ringFill.style.stroke = scoreColor;
+  ringFill.style.strokeDashoffset = circumference;
+  setTimeout(() => { ringFill.style.strokeDashoffset = offset; }, 200);
+  document.getElementById('credNumber').textContent = data.credScore;
+  document.getElementById('credNumber').style.color = scoreColor;
+
+  const badge = document.getElementById('statusBadge');
+  const badgeMap = {
+    verified: ['VERIFIED', 'status-verified'],
+    suspicious: ['SUSPICIOUS', 'status-suspicious'],
+    discrepancy: ['HIGH DISCREPANCY', 'status-discrepancy']
+  };
+  badge.textContent = badgeMap[data.status][0];
+  badge.className = 'status-badge ' + badgeMap[data.status][1];
+
+  // Metrics
+  const metrics = [
+    { label: 'CO₂ Intensity', value: data.co2, unit: 'MT/yr', delta: data.yoy, trend: data.trend },
+    { label: 'Methane Index', value: data.methane, unit: 'MT equiv.', delta: data.trend==='up'?'+2.1%':'-1.2%', trend: data.trend },
+    ...(data.aqi ? [{ label: 'Air Quality Index', value: data.aqi, unit: 'AQI', delta: data.aqi > 100 ? 'UNHEALTHY' : 'MODERATE', trend: 'neutral' }] : []),
+    ...(data.pm25 ? [{ label: 'PM2.5 Level', value: data.pm25, unit: 'μg/m³', delta: data.pm25 > 35 ? '▲ High' : '▼ Mod.', trend: data.pm25 > 35 ? 'up' : 'down' }] : []),
+    { label: 'Credibility Score', value: data.credScore, unit: '/ 100', delta: data.status === 'verified' ? 'RELIABLE' : data.status === 'suspicious' ? 'REVIEW' : 'CRITICAL', trend: data.status === 'verified' ? 'down' : 'up' },
+    { label: 'Data Sources', value: 9, unit: 'streams', delta: '↺ LIVE SYNC', trend: 'neutral' }
+  ];
+
+  document.getElementById('metricsGrid').innerHTML = metrics.map(m => `
+    <div class="metric-card">
+      <div class="metric-label">${m.label}</div>
+      <div class="metric-value">${m.value}<span class="metric-unit">${m.unit}</span></div>
+      <div class="metric-delta ${m.trend==='up'?'delta-up':m.trend==='down'?'delta-down':'delta-neutral'}">${m.delta}</div>
+    </div>
+  `).join('');
+
+  // Chart
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if (trendChartInstance) { trendChartInstance.destroy(); }
+
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  const satGrad = ctx.createLinearGradient(0, 0, 0, 200);
+  satGrad.addColorStop(0, 'rgba(0,212,180,0.2)');
+  satGrad.addColorStop(1, 'rgba(0,212,180,0)');
+
+  trendChartInstance = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        {
+          label: 'Satellite',
+          data: data.satellite,
+          borderColor: '#00d4b4',
+          backgroundColor: satGrad,
+          borderWidth: 2,
+          pointRadius: 3,
+          pointBackgroundColor: '#00d4b4',
+          pointBorderColor: '#050608',
+          pointBorderWidth: 2,
+          tension: 0.4,
+          fill: true
+        },
+        {
+          label: 'Self-reported',
+          data: data.reported,
+          borderColor: 'rgba(246,166,35,0.8)',
+          backgroundColor: 'transparent',
+          borderWidth: 1.5,
+          borderDash: [5, 3],
+          pointRadius: 2,
+          pointBackgroundColor: '#f6a623',
+          tension: 0.4,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: {
+        backgroundColor: '#141c26',
+        borderColor: 'rgba(255,255,255,0.08)',
+        borderWidth: 1,
+        titleColor: '#f0f4f8',
+        bodyColor: '#8b9aad',
+        padding: 10,
+        titleFont: { family: "'DM Mono', monospace", size: 11 },
+        bodyFont: { family: "'Space Grotesk', sans-serif", size: 12 }
+      }},
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+          ticks: { color: '#4a5568', font: { family: "'DM Mono', monospace", size: 10 } }
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.03)', drawBorder: false },
+          ticks: { color: '#4a5568', font: { family: "'DM Mono', monospace", size: 10 } }
+        }
+      }
+    }
+  });
+
+  // Breakdown
+  document.getElementById('breakdownList').innerHTML = data.breakdown.map(b => `
+    <div class="breakdown-item">
+      <div class="breakdown-label">${b.label}</div>
+      <div class="breakdown-bar-wrap"><div class="breakdown-bar" data-width="${b.pct}" style="background:${b.color}"></div></div>
+      <div class="breakdown-pct">${b.pct}%</div>
+    </div>
+  `).join('');
+
+  // Comparison
+  const maxVal = Math.max(...data.peers.map(p=>p.val));
+  document.getElementById('comparisonList').innerHTML = data.peers.map(p => `
+    <div class="comparison-row">
+      <div class="comp-label">${p.label}</div>
+      <div class="comp-bar-wrap"><div class="comp-bar" data-width="${(p.val/maxVal*100).toFixed(0)}" style="background:${p.color}"></div></div>
+      <div class="comp-value">${p.val} MT</div>
+    </div>
+  `).join('');
+
+  // Report
+  document.getElementById('reportBody').innerHTML = data.report;
+  document.getElementById('reportMeta').textContent = `GENERATED ${new Date().toISOString().split('T')[0].toUpperCase()} — EMISSARY ENGINE v2.4.1`;
+  document.getElementById('reportFindings').innerHTML = data.findings.map(f => `
+    <div class="finding-item">
+      <div class="finding-status" style="color:${f.color}">${f.status}</div>
+      <div class="finding-text">${f.text}</div>
+    </div>
+  `).join('');
+
+  // Signals
+  document.getElementById('signalsGrid').innerHTML = data.signals.map(s => `
+    <div class="signal-item">
+      <div class="signal-indicator" style="background:${s.indicator}"></div>
+      <div class="signal-label">${s.label}</div>
+      <div class="signal-value" style="color:${s.color}">${s.value}</div>
+    </div>
+  `).join('');
+
+  // Animate bars with delay
+  setTimeout(() => {
+    document.querySelectorAll('.breakdown-bar[data-width]').forEach(el => {
+      el.style.width = el.dataset.width + '%';
+    });
+    document.querySelectorAll('.comp-bar[data-width]').forEach(el => {
+      el.style.width = el.dataset.width + '%';
+    });
+  }, 300);
+}
+
+// Enter key search
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') runAnalysis();
+});
+</script>
+</body>
+</html>
